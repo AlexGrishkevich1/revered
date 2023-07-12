@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CreateLinkRequest;
 use App\Repositories\Interfaces\LinkRepositoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class LinkController extends Controller
         return response()->json(['payload' => $data]);
     }
 
-    public function store(Request $request): JsonResponse {
+    public function store(CreateLinkRequest $request): JsonResponse {
         try {
             $data = $this->linkRepository->create($request->only('link'));
             return response()->json(['payload' => $data]);

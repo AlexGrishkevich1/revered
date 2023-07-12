@@ -6,39 +6,47 @@ use App\Models\LastShortLink;
 use App\Models\Link;
 use App\Repositories\Interfaces\LinkRepositoryInterface;
 use App\Repositories\Traits\ModelTrait;
-use App\Services\Interfaces\LinkServiceInterface;
+use App\Classes\NextKeyGenerator;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\DB;
 
 class LinkRepository implements LinkRepositoryInterface
 {
     use ModelTrait;
 
-    private LinkServiceInterface $linkService;
+    private int $recentLinksCount = 10;
 
-    public function __construct(LinkServiceInterface $linkService)
+    public function __construct()
     {
-        $this->linkService = $linkService;
         $this->setModel(resolve(Link::class));
     }
 
     public function get(): Collection {
-        return $this->model->latest()->take(10)->get();
+        return $this->model->latest()->take($this->recentLinksCount)->get();
     }
 
-    public function create(array $data): Link {
-        $lastShort = LastShortLink::latest()->first();
+    public function create(array $data): Link
+    {
+        DB::statement('LOCK TABLES ' . $this->model->getTable() . ' WRITE, last_short_links WRITE');
 
-        $shortedLink = $this->linkService->shortLinkGenerate($lastShort?->short);
+        try {
+            $lastShort = LastShortLink::first();
 
-        $linkModel = $this->model->create([
-            'link' => $data['link'],
-            'short' => $shortedLink
-        ]);
+            $shortedLink = NextKeyGenerator::generate($lastShort?->short);
 
-        LastShortLink::create([
-            'short' => $shortedLink
-        ]);
+            $linkModel = $this->model::create([
+                'link' => $data['link'],
+                'short' => $shortedLink
+            ]);
+
+            LastShortLink::updateOrCreate([
+                'id' => $lastShort ? $lastShort->id : 1
+            ], [
+                'short' => $shortedLink
+            ]);
+        } finally {
+            DB::statement('UNLOCK TABLES');
+        }
 
         return $linkModel;
     }

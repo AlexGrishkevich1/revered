@@ -17,7 +17,6 @@
     </head>
     <body class="antialiased">
         <form id="link-form">
-            @csrf
             <input type="text" name="link" style="border: 1px solid black">
             <input type="submit" style="border: 1px solid grey" value="Generate">
         </form>
@@ -25,13 +24,13 @@
 
         </div>
     </body>
+    <div id="error-message" style="color: red;"></div>
 </html>
 <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 <script>
-    // let laravelToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    // let csrfToken = "{{ csrf_token() }}"
-
     let linkForm = document.getElementById('link-form')
+    let errorBlock = document.getElementById('error-message')
+
     linkForm.addEventListener("submit", (e) => {
         e.preventDefault();
         const formData = new FormData(linkForm);
@@ -39,15 +38,16 @@
         axios
             .post("/link", formData, {
                 headers: {
-                    // 'X-CSRF-TOKEN' : csrf_token
                 },
             })
             .then(res => {
-                console.log(res);
+                clearErrorBlock()
                 renderLastLinks()
             })
             .catch(err => {
-                console.log(err);
+                let message = err.response.data.errors.link[0]
+                clearErrorBlock()
+                errorBlock.innerText = message
             });
     });
 
@@ -65,5 +65,9 @@
         .catch(err => {
             console.log(err);
         });
+    }
+
+    function clearErrorBlock() {
+        errorBlock.innerText = ""
     }
 </script>
